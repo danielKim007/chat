@@ -8,6 +8,13 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	writeTimeout   = 10 * time.Second
+	readTimeout    = 10 * time.Second
+	pingPeriod     = 5 * time.Second
+	maxMessageSize = 512
+)
+
 type conn struct {
 	wsConn *websocket.Conn
 	send   chan []byte
@@ -57,7 +64,7 @@ func (c *conn) writePump() {
 	defer c.wg.Done()
 
 	ticker := time.NewTicker(pingPeriod)
-	defer ticker.stop()
+	defer ticker.Stop()
 
 	for s := range c.send {
 		if err := c.wsConn.WriteMessage(websocket.TextMessage, s); err != nil {

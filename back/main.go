@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/websocket"
+	"github.com/danielKim007/chat/back/websocket"
 )
 
 func main() {

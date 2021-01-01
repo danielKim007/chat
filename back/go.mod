@@ -1,3 +1,5 @@
-module github.com/danielKim007/chat/tree/main/back
+module github.com/danielKim007/chat/back
 
 go 1.15
+
+require github.com/gorilla/websocket v1.4.2
