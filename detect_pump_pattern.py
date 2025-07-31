@@ -13,6 +13,7 @@ Upbit 9 AM Pump Pattern Detector
 import requests
 import datetime
 import time
+import collections
 
 def get_krw_markets():
     """
@@ -105,41 +106,43 @@ def check_9am_pump_pattern(market, target_date):
 
 
 if __name__ == "__main__":
-    # --- 확인할 날짜 설정 ---
-    # 특정 날짜를 확인하고 싶다면 아래 주석을 풀고 날짜를 입력하세요.
-    # target_date_str = "2025-07-30"
+    # --- 분석 기간 설정 ---
+    # 90일은 타임아웃을 유발할 수 있으므로 7일로 줄여서 실행합니다.
+    DAYS_TO_SCAN = 7
 
-    # 기본적으로 어제 날짜를 확인
-    yesterday = datetime.date.today() - datetime.timedelta(days=1)
-    target_date_str = yesterday.strftime("%Y-%m-%d")
-
-    print(f"--- {target_date_str} 모든 KRW 마켓 펌핑 패턴 스캔 시작 ---")
+    print(f"--- 지난 {DAYS_TO_SCAN}일간의 '9시 펌핑' 패턴 통계 분석 시작 ---")
+    print("이 작업은 수십 분이 소요될 수 있습니다...")
 
     all_markets = get_krw_markets()
-    found_patterns = []
+    pattern_counter = collections.Counter()
+    total_checks = len(all_markets) * DAYS_TO_SCAN
+    current_check = 0
 
     if all_markets:
-        for i, market in enumerate(all_markets):
-            # API 요청에 대한 약간의 지연 시간 추가 (Rate Limit 방지)
-            time.sleep(0.1)
-            print(f"({i+1}/{len(all_markets)}) {market} 확인 중...", end='\r')
+        for i in range(1, DAYS_TO_SCAN + 1):
+            target_date = datetime.date.today() - datetime.timedelta(days=i)
+            target_date_str = target_date.strftime("%Y-%m-%d")
 
-            result = check_9am_pump_pattern(market, target_date_str)
-            if result:
-                found_patterns.append(result)
+            for market in all_markets:
+                current_check += 1
+                progress = (current_check / total_checks) * 100
+                print(f"[{progress:.1f}%] {target_date_str} {market} 확인 중...", end='\r')
 
-    print("\n--- 스캔 완료 ---")
+                # API 요청에 대한 지연 시간 (필수)
+                time.sleep(0.1)
 
-    if found_patterns:
-        # 거래량 비율(volume_ratio)이 높은 순으로 정렬
-        found_patterns.sort(key=lambda x: x['volume_ratio'], reverse=True)
+                result = check_9am_pump_pattern(market, target_date_str)
+                if result:
+                    pattern_counter[market] += 1
 
-        print(f"\n총 {len(found_patterns)}개의 펌핑 패턴 의심 종목을 찾았습니다:")
-        for p in found_patterns:
-            print(f"\n- 마켓: {p['market']}")
-            print(f"  - 9시 거래량 급증: {p['volume_ratio']:,.1f} 배")
-            print(f"  - 1분간 가격 변동: {p['price_change']:.2f}%")
-            print(f"  - 9시 거래대금: {p['spike_volume_krw']:,.0f} 원")
-            print(f"  - 직전 30분 평균 거래대금: {p['avg_volume_krw']:,.0f} 원")
+    print("\n\n--- 모든 날짜 스캔 완료 ---")
+
+    if pattern_counter:
+        print(f"\n지난 {DAYS_TO_SCAN}일간 '9시 펌핑' 패턴 발견 횟수 TOP 20:")
+        # 발견 횟수가 높은 순으로 정렬
+        sorted_patterns = pattern_counter.most_common(20)
+
+        for market, count in sorted_patterns:
+            print(f"- {market}: {count} 회")
     else:
-        print("\n펌핑 패턴이 의심되는 종목을 찾지 못했습니다.")
+        print(f"\n지난 {DAYS_TO_SCAN}일간 펌핑 패턴이 의심되는 종목을 찾지 못했습니다.")
